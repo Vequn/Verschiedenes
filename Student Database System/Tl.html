@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Student DBMS Portal</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans antialiased min-h-screen">
+
+    <div class="container mx-auto px-4 py-8 max-w-5xl">
+        <header class="flex justify-between items-center border-b border-gray-800 pb-6 mb-8">
+            <h1 class="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">
+                Secure Student DBMS
+            </h1>
+            <div id="authStatus" class="text-sm font-medium text-gray-400">
+                Not Authenticated
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            
+            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl h-fit">
+                <h2 class="text-xl font-bold mb-4 text-blue-400">System Gateway</h2>
+                
+                <form id="loginForm" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Username (Email)</label>
+                        <input type="email" id="loginEmail" required class="w-full bg-gray-900 border border-gray-700 rounded p-2.5 text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Password</label>
+                        <input type="password" id="loginPassword" required class="w-full bg-gray-900 border border-gray-700 rounded p-2.5 text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded transition duration-200 cursor-pointer">
+                        Secure Authorization
+                    </button>
+                </form>
+
+                <div id="logoutSection" class="hidden text-center">
+                    <p class="text-green-400 font-medium mb-4">✓ Authorization Session Active</p>
+                    <button id="logoutBtn" class="w-full bg-red-600/20 hover:bg-red-600/40 text-red-400 border border-red-500/30 font-bold py-2 px-4 rounded transition duration-200 cursor-pointer">
+                        Terminate Session
+                    </button>
+                </div>
+            </div>
+
+            <div class="md:col-span-2 space-y-8">
+                
+                <div id="adminPanel" class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl hidden">
+                    <h2 class="text-xl font-bold mb-4 text-indigo-400">Administrative Record Addition</h2>
+                    <form id="addStudentForm" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <input type="text" id="stuName" placeholder="Full Name" required class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white">
+                        </div>
+                        <div>
+                            <input type="email" id="stuEmail" placeholder="Academic Email" required class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white">
+                        </div>
+                        <div>
+                            <input type="password" id="stuPassword" placeholder="Initial Password (min 8 chars)" required class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white">
+                        </div>
+                        <div>
+                            <input type="number" id="stuGpa" step="0.1" min="0" max="4" placeholder="GPA (0.0 - 4.0)" class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white">
+                        </div>
+                        <button type="submit" class="sm:col-span-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded transition cursor-pointer">
+                            Commit Student Record to Ledger
+                        </button>
+                    </form>
+                </div>
+
+                <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold text-gray-200">System Records Ledger</h2>
+                        <button id="refreshBtn" class="text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 py-1.5 px-3 rounded cursor-pointer">
+                            Sync Ledger
+                        </button>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-gray-700 text-gray-400 text-xs uppercase tracking-wider">
+                                    <th class="py-3 px-4">System ID</th>
+                                    <th class="py-3 px-4">Name</th>
+                                    <th class="py-3 px-4">Email</th>
+                                    <th class="py-3 px-4">GPA</th>
+                                    <th class="py-3 px-4 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="studentTableBody" class="divide-y divide-gray-800 text-sm">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = "http://127.0.0.1:8000";
+
+        // UI Element Selectors
+        const loginForm = document.getElementById('loginForm');
+        const logoutSection = document.getElementById('logoutSection');
+        const adminPanel = document.getElementById('adminPanel');
+        const authStatus = document.getElementById('authStatus');
+        const studentTableBody = document.getElementById('studentTableBody');
+
+        // Setup Application Security Tokens inside script state
+        let token = localStorage.getItem('secure_dbms_token') || null;
+
+        // Lifecycle Entrypoint
+        window.addEventListener('DOMContentLoaded', () => {
+            evaluateAuthState();
+            fetchRecords();
+        });
+
+        // 1. JWT Authentication Router
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Fast API standard OAuth2 uses form data requirements rather than pure raw JSON structures
+            const formData = new URLSearchParams();
+            formData.append('username', document.getElementById('loginEmail').value);
+            formData.append('password', document.getElementById('loginPassword').value);
+
+            try {
+                const response = await fetch(`${API_BASE}/token`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error('Authorization rejected: Check server runtime or privileges.');
+                
+                const data = await response.json();
+                token = data.access_token;
+                localStorage.setItem('secure_dbms_token', token);
+                
+                // Decode payload dynamically to determine Role (Base64 URL format payload is at index 1)
+                const base64Payload = token.split('.')[1];
+                const payload = JSON.parse(atob(base64Payload));
+                localStorage.setItem('user_role', payload.role);
+
+                alert("Authentication clearance granted.");
+                evaluateAuthState();
+                fetchRecords();
+            } catch (err) {
+                alert(err.message);
+            }
+        });
+
+        // 2. Clear Session State
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            localStorage.clear();
+            token = null;
+            evaluateAuthState();
+            fetchRecords();
+        });
+
+        // 3. Evaluate Authorization State & Display Views
+        function evaluateAuthState() {
+            const currentRole = localStorage.getItem('user_role');
+            if (token) {
+                loginForm.classList.add('hidden');
+                logoutSection.classList.remove('hidden');
+                authStatus.textContent = `Role Clearances: ${currentRole.toUpperCase()}`;
+                authStatus.className = "text-sm font-bold text-green-400";
+                
+                if (currentRole === 'admin' || currentRole === 'faculty') {
+                    adminPanel.classList.remove('hidden');
+                }
+            } else {
+                loginForm.classList.remove('hidden');
+                logoutSection.classList.add('hidden');
+                adminPanel.classList.add('hidden');
+                authStatus.textContent = "Guest Access Layer Only";
+                authStatus.className = "text-sm font-medium text-amber-500";
+            }
+        }
+
+        // 4. Secure Read Operations (GET Access to Database)
+        async function fetchRecords() {
+            try {
+                const headers = {};
+                // Inject the standard secure bearer token if it exists in client memory
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+
+                const response = await fetch(`${API_BASE}/students/all`, { method: 'GET', headers });
+                if (!response.ok) throw new Error('Could not synchronize record index.');
+                
+                const students = await response.json();
+                studentTableBody.innerHTML = '';
+
+                students.forEach(student => {
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-gray-800/50 transition";
+                    tr.innerHTML = `
+                        <td class="py-3 px-4 font-mono text-gray-400">${student.id}</td>
+                        <td class="py-3 px-4 font-semibold">${student.name}</td>
+                        <td class="py-3 px-4 text-gray-300">${student.email}</td>
+                        <td class="py-3 px-4 text-emerald-400">${student.gpa || 'N/A'}</td>
+                        <td class="py-3 px-4 text-right">
+                            <button onclick="deleteRecord(${student.id})" class="text-xs bg-red-900/40 hover:bg-red-900 text-red-300 py-1 px-2.5 rounded transition cursor-pointer">Purge</button>
+                        </td>
+                    `;
+                    studentTableBody.appendChild(tr);
+                });
+            } catch (err) {
+                studentTableBody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-gray-500">No records accessible under your access tier.</td></tr>`;
+            }
+        }
+
+        // 5. Secure Create Records (POST Access)
+        document.getElementById('addStudentForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                name: document.getElementById('stuName').value,
+                email: document.getElementById('stuEmail').value,
+                password: document.getElementById('stuPassword').value,
+                gpa: parseFloat(document.getElementById('stuGpa').value) || null
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/students/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.detail || 'Write execution rejected.');
+                }
+
+                alert('Record written to database.');
+                document.getElementById('addStudentForm').reset();
+                fetchRecords();
+            } catch (err) {
+                alert(err.message);
+            }
+        });
+
+        // 6. Secure Destruction Operations (DELETE Access)
+        async function deleteRecord(id) {
+            if (!confirm(`Confirm administrative purge of record identifier: ${id}?`)) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/students/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) throw new Error('Privilege levels insufficient for destructive operations.');
+                
+                alert('Record purged successfully.');
+                fetchRecords();
+            } catch (err) {
+                alert(err.message);
+            }
+        }
+
+        document.getElementById('refreshBtn').addEventListener('click', fetchRecords);
+    </script>
+</body>
+</html>
