@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  # Container 1: High-Performance Database
+  postgres_db:
+    image: postgres:15-alpine
+    container_name: dbms_postgres
+    environment:
+      POSTGRES_USER: admin_user
+      POSTGRES_PASSWORD: SecureDbPassword2026!
+      POSTGRES_DB: secure_student_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin_user -d secure_student_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Container 2: In-Memory Caching Microservice
+  redis_cache:
+    image: redis:7-alpine
+    container_name: dbms_redis
+    ports:
+      - "6379:6379"
+    restart: always
+
+  # Container 3: Asynchronous FastAPI Application Engine
+  api_service:
+    build: ./backend
+    container_name: dbms_api
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://admin_user:SecureDbPassword2026!@postgres_db:5432/secure_student_db
+      - REDIS_URL=redis://redis_cache:6379/0
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+      redis_cache:
+
+volumes:
+  postgres_data:
