@@ -1,0 +1,32 @@
+name: C++ Production CI Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Source Code
+      uses: actions/checkout@v4
+
+    - name: Install System Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake libsqlite3-dev libboost-all-dev libgtest-dev
+
+    - name: Configure CMake and Build Environment
+      run: |
+        mkdir build
+        cd build
+        cmake ..
+        make
+
+    - name: Execute Automated Test Matrix
+      run: |
+        cd build
+        ./run_all_system_tests
