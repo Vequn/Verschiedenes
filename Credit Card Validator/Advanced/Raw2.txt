@@ -1,0 +1,18 @@
+locust -f locustfile.py
+
+directory
+credit_card_engine/
+│
+├── .github/
+│   └── workflows/
+│       └── ci.yml             # GitHub Actions Automation Suite
+├── src/
+│   ├── __init__.py
+│   ├── validator.py          # Core Math Processing Engine
+│   └── main.py               # Optimized FastAPI Microservice
+├── tests/
+│   └── test_validator.py     # Comprehensive Unit Testing Matrix
+├── Dockerfile                # Production Container Blueprint
+├── requirements.txt          # Python Dependency Manifest
+├── locustfile.py             # Performance Profiling & Load Test Harness
+└── README.md                 # Technical Architecture Documentation
