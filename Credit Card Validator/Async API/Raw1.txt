@@ -1,0 +1,44 @@
+High-Performance Execution & Verification Guide
+pip install fastapi uvicorn pydantic
+
+execute =
+uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4 --log-level info
+
+
+Testing the Endpoint via Terminal
+valid visa input verification=
+curl -i -X POST "http://127.0.0.1:8000/api/v1/validate" \
+     -H "Content-Type: application/json" \
+     -d '{"card_number": "4532 7153 9022 1367"}'
+
+
+Expected Telemetry Response Headers & Body Snippet:
+HTTP/1.1 200 OK
+content-type: application/json
+X-Process-Time-Ms: 0.1420
+
+{
+  "success": true,
+  "data": {
+    "isValid": true,
+    "network": "Visa",
+    "telemetry": {
+      "luhnChecksumPassed": true,
+      "lengthConstraintPassed": true,
+      "extractedLength": 16
+    }
+  }
+}
+
+
+Test B =
+Malicious Payload Flood Rejection Injection
+curl -i -X POST "http://127.0.0.1:8000/api/v1/validate" \
+     -H "Content-Type: application/json" \
+     -d '{"card_number": "'"$(printf '9'.%.0s {1..2000})'"'}'
+
+expected Response;
+HTTP/1.1 413 Request Entity Too Large
+content-type: application/json
+
+{"success":false,"error":"Payload size limit breached. Maximum 1KB allowed."}
