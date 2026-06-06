@@ -1,0 +1,7 @@
+global:
+  scrape_interval: 5s  # Pull data every 5 seconds
+
+scrape_configs:
+  - job_name: 'validator-metrics-stream'
+    static_configs:
+      - targets: ['validator-api:8000']  # Targets our API container over internal docker network
