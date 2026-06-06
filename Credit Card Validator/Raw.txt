@@ -1,1 +1,16 @@
 python -m unittest -v test_validator.py
+.
+.
+.
+Expected Output
+=
+test_length_boundary_constraints (test_validator.TestAdvancedCreditCardValidator) ... ok
+test_luhn_checksum_failures (test_validator.TestAdvancedCreditCardValidator) ... ok
+test_malformed_and_malicious_inputs (test_validator.TestAdvancedCreditCardValidator) ... ok
+test_sanitization_engine (test_validator.TestAdvancedCreditCardValidator) ... ok
+test_valid_issuers_and_checksums (test_validator.TestAdvancedCreditCardValidator) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.003s
+
+OK
