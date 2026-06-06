@@ -1,0 +1,49 @@
+[ PUBLIC INTERNET ]
+                           │
+                           ▼  (HTTPS / JSON Payload)
+┌────────────────────────────────────────────────────────┐
+│               FASTAPI REVERSE PROXY LAYER              │
+│                                                        │
+│  1. Content-Length Guard (Max 1KB Payload Check)       │
+│  2. Telemetry Interceptor (Sets X-Process-Time-Ms)     │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+                           ▼ (Internal Route Mapping)
+┌────────────────────────────────────────────────────────┐
+│                PYDANTIC INGESTION MODEL                │
+│                                                        │
+│  - String Boundary Validation (12 to 30 chars)         │
+│  - Malicious / Non-empty Whitespace Rejection          │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+                           ▼ (Clean String Passed)
+┌────────────────────────────────────────────────────────┐
+│           CORE VALIDATION ENGINE PIPELINE              │
+│                                                        │
+│   Phase 1: Sanitization (Regex Strips Spaces/Hyphens)  │
+│                           │                            │
+│                           ▼                            │
+│   Phase 2: Poly-Routing (Strategy Pattern Map)         │
+│            - Matches IIN/BIN Ranges                    │
+│            - Enforces Issuer Length Rules              │
+│                           │                            │
+│                           ▼                            │
+│   Phase 3: Mathematical Invariant Engine               │
+│            - Fast O(1) Lookup Array Luhn Check         │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+                           ▼ (Generate Metrics Data)
+┌────────────────────────────────────────────────────────┐
+│               METRICS & OBSERVABILITY                  │
+│                                                        │
+│  - Exposes Real-time State Matrix via `/metrics`       │
+│  - Tracking HTTP Traffic Volumetrics & Verdicts        │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+                           ▼ (Continuous Scrape Target)
+┌────────────────────────────────────────────────────────┐
+│            PROMETHEUS & GRAFANA INFRASTRUCTURE         │
+│                                                        │
+│  - Prometheus: Polling Engine Database                 │
+│  - Grafana: Dashboard Visualization Analytics Panel   │
+└────────────────────────────────────────────────────────┘
