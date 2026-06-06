@@ -1,0 +1,41 @@
+name: Enterprise Core CI Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  verify-system:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11"]
+
+    steps:
+    - name: Checkout Repository Core
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+
+    - name: Install Enterprise Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install flake8 black
+
+    - name: Code Style Verification (Linting Enforcement)
+      run: |
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # Black check to enforce consistent styling across developers
+        black --check . --line-length 120
+
+    - name: Execute High-Grade Test Suite Metrics
+      run: |
+        python -m unittest discover -s tests -p "test_*.py" -v
